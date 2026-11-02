@@ -83,6 +83,9 @@ export interface PrepTask {
   category: 'Python' | 'SQL' | 'DSA' | 'Machine Learning' | 'HR Questions' | 'Aptitude';
   title: string;
   question_or_topic: string;
+  answer?: string;
+  code_snippet?: string;
+  key_takeaways?: string[];
   notes?: string;
   is_completed: boolean;
   priority: 'Low' | 'Medium' | 'High';
