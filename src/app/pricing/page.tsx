@@ -205,7 +205,7 @@ export default function PricingPage() {
             <span className="font-bold flex items-center justify-center gap-1.5 mb-1 text-sm">
               <ShieldCheck className="w-4 h-4 text-blue-600" /> Direct UPI Peer-to-Bank Gateway
             </span>
-            All transactions are routed directly to our verified merchant UPI VPA (<code>81793377025@axl</code>, Payee: <strong>AKASH KALE</strong>) with 0% platform intermediary commission and instantaneous activation upon UTR reference verification.
+            All transactions are routed directly to our verified merchant UPI VPA (<code>81793377025@axl</code>, Payee: <strong>APPLY TRACK</strong>) with 0% platform intermediary commission and instantaneous activation upon payment confirmation.
           </div>
         </div>
       </main>
