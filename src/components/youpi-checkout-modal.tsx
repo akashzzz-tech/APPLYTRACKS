@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import QRCode from 'qrcode';
-import { CheckCircle2, Copy, ExternalLink, X, Smartphone, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, Copy, X, Smartphone, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
 import { DataService } from '@/lib/data-service';
 
 interface YoupiCheckoutModalProps {
@@ -34,14 +34,13 @@ export default function YoupiCheckoutModal({
 }: YoupiCheckoutModalProps) {
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [copiedUpi, setCopiedUpi] = useState(false);
-  const [utrNumber, setUtrNumber] = useState('');
+  const [optionalUtr, setOptionalUtr] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Generate standard NPCI UPI Intent URI
-  // e.g. upi://pay?pa=81793377025@axl&pn=AKASH%20KALE&am=49.00&cu=INR&tn=ApplyTrack%20STUDENT%20PRO
-  const transactionNote = `ApplyTrack ${planName.replace(/\s+/g, '_')}`;
+  const transactionNote = `ApplyTrack_${planName.replace(/\s+/g, '_')}`;
   const upiIntentUri = `upi://pay?pa=${encodeURIComponent(UPI_CONFIG.vpa)}&pn=${encodeURIComponent(
     UPI_CONFIG.payeeName
   )}&am=${amount.toFixed(2)}&cu=INR&tn=${encodeURIComponent(transactionNote)}`;
@@ -50,7 +49,7 @@ export default function YoupiCheckoutModal({
     if (isOpen) {
       setError(null);
       setPaymentSuccess(false);
-      setUtrNumber('');
+      setOptionalUtr('');
       QRCode.toDataURL(upiIntentUri, {
         width: 260,
         margin: 1,
@@ -72,16 +71,9 @@ export default function YoupiCheckoutModal({
     setTimeout(() => setCopiedUpi(false), 2500);
   };
 
-  const handleVerifyPayment = async (e: React.FormEvent) => {
+  const handleInstantConfirmation = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-
-    const cleanUtr = utrNumber.trim();
-    if (cleanUtr.length < 6) {
-      setError('Please enter a valid 12-digit UPI Reference / UTR Number from your payment receipt.');
-      return;
-    }
-
     setSubmitting(true);
 
     try {
@@ -91,7 +83,7 @@ export default function YoupiCheckoutModal({
           subscription_tier: planTier,
         });
 
-        // Record activity log
+        // Record activity log with optional UTR if provided
         await DataService.createActivityLog(
           userId,
           'UPGRADE_SUBSCRIPTION',
@@ -100,10 +92,11 @@ export default function YoupiCheckoutModal({
           {
             tier: planTier,
             amount,
-            utr_ref: cleanUtr,
+            utr_ref: optionalUtr.trim() || 'SELF_CONFIRMED',
             vpa: UPI_CONFIG.vpa,
             payee: UPI_CONFIG.payeeName,
             status: 'verified',
+            user_email: userEmail,
           }
         );
       }
@@ -114,7 +107,7 @@ export default function YoupiCheckoutModal({
         onClose();
       }, 1500);
     } catch (err: any) {
-      setError(err.message || 'Payment verification encountered an issue. Please contact support.');
+      setError(err.message || 'Subscription activation encountered an issue. Please contact support.');
     } finally {
       setSubmitting(false);
     }
@@ -133,15 +126,15 @@ export default function YoupiCheckoutModal({
           </button>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-500/30 text-blue-200 uppercase tracking-wider border border-blue-400/30">
-              YouPI-PG Gateway
+              Instant UPI Checkout
             </span>
             <span className="text-xs text-slate-300 flex items-center gap-1">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 0% Platform Fee Direct UPI
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" /> 0% Fee Direct Bank Transfer
             </span>
           </div>
           <h2 className="text-xl font-bold tracking-tight">Upgrade to {planName}</h2>
           <p className="text-xs text-slate-300 mt-1">
-            Pay <span className="font-extrabold text-white text-base">₹{amount}</span> directly to{' '}
+            Pay <span className="font-extrabold text-white text-base">₹{amount}</span> to{' '}
             <span className="font-medium text-blue-200">{UPI_CONFIG.payeeName}</span>
           </p>
         </div>
@@ -151,24 +144,23 @@ export default function YoupiCheckoutModal({
             <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto animate-bounce">
               <CheckCircle2 className="w-10 h-10" />
             </div>
-            <h3 className="text-xl font-bold text-slate-900">Payment Confirmed!</h3>
+            <h3 className="text-xl font-bold text-slate-900">Subscription Activated!</h3>
             <p className="text-sm text-slate-600">
-              Your account has been upgraded to <strong className="text-blue-600 uppercase">{planTier}</strong>. Enjoy
-              all premium features!
+              Welcome to <strong className="text-blue-600 uppercase">{planTier}</strong>! Your account is upgraded and all features are now unlocked.
             </p>
           </div>
         ) : (
           <div className="p-6 space-y-5 max-h-[80vh] overflow-y-auto">
-            {/* QR Code Container */}
+            {/* Step 1: Scan & Pay */}
             <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center">
-              <p className="text-xs font-medium text-slate-600 mb-3">
-                Scan with any UPI App (GPay, PhonePe, Paytm, BHIM, Navi)
+              <p className="text-xs font-semibold text-slate-700 mb-3">
+                Step 1: Scan & Pay ₹{amount} using any UPI App
               </p>
               <div className="inline-block p-2 bg-white rounded-xl shadow-sm border border-slate-200">
                 {qrCodeUrl ? (
-                  <img src={qrCodeUrl} alt="UPI Payment QR Code" className="w-48 h-48 mx-auto" />
+                  <img src={qrCodeUrl} alt="UPI Payment QR Code" className="w-44 h-44 mx-auto" />
                 ) : (
-                  <div className="w-48 h-48 flex items-center justify-center">
+                  <div className="w-44 h-44 flex items-center justify-center">
                     <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
                   </div>
                 )}
@@ -176,7 +168,7 @@ export default function YoupiCheckoutModal({
 
               {/* UPI ID Copy Box */}
               <div className="mt-3 flex items-center justify-center gap-2 text-xs">
-                <span className="text-slate-500">UPI ID:</span>
+                <span className="text-slate-500">Pay to UPI:</span>
                 <code className="font-mono bg-white px-2.5 py-1 rounded-lg border border-slate-200 text-slate-900 font-bold">
                   {UPI_CONFIG.vpa}
                 </code>
@@ -200,7 +192,7 @@ export default function YoupiCheckoutModal({
                   href={upiIntentUri}
                   className="w-full inline-flex items-center justify-center gap-2 py-2 px-3 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-sm"
                 >
-                  <Smartphone className="w-4 h-4" /> Open in UPI App (GPay / PhonePe / Paytm)
+                  <Smartphone className="w-4 h-4" /> Tap to Pay ₹{amount} via UPI App
                 </a>
               </div>
             </div>
@@ -212,45 +204,41 @@ export default function YoupiCheckoutModal({
               </div>
             )}
 
-            {/* Verification Form */}
-            <form onSubmit={handleVerifyPayment} className="space-y-3">
+            {/* Step 2: Confirmation */}
+            <form onSubmit={handleInstantConfirmation} className="space-y-3">
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  12-Digit UPI Reference Number (UTR / Ref ID) *
+                  UPI Ref / UTR No. <span className="text-slate-400 font-normal">(Optional)</span>
                 </label>
                 <input
                   type="text"
-                  required
-                  value={utrNumber}
-                  onChange={(e) => setUtrNumber(e.target.value)}
-                  placeholder="e.g. 423984712093"
+                  value={optionalUtr}
+                  onChange={(e) => setOptionalUtr(e.target.value)}
+                  placeholder="Optional 12-digit Ref No. if available"
                   className="w-full px-3.5 py-2 text-sm rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-50 focus:bg-white font-mono"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  You will find the 12-digit UPI Ref ID in your bank / UPI payment details after paying.
-                </p>
               </div>
 
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-3 px-4 text-sm font-bold text-white bg-slate-900 hover:bg-blue-600 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 px-4 text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-colors shadow-md flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {submitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" /> Verifying Payment...
+                    <Loader2 className="w-4 h-4 animate-spin" /> Activating Plan...
                   </>
                 ) : (
                   <>
-                    Complete Verification & Upgrade <ArrowRight className="w-4 h-4" />
+                    <CheckCircle2 className="w-4 h-4" /> I&apos;ve Completed Payment — Activate {planName}
                   </>
                 )}
               </button>
             </form>
 
             <div className="flex items-center justify-between text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-              <span>Secured with Direct UPI Settlement</span>
-              <span className="font-semibold text-slate-700">Instant Activation</span>
+              <span>Direct Bank Settlement</span>
+              <span className="font-semibold text-emerald-600">Instant Access Unlocked</span>
             </div>
           </div>
         )}
