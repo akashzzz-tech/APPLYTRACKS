@@ -1112,13 +1112,20 @@ WHERE salary > dept_avg;`,
   }
 
   // --- ACTIVITY LOGS ---
-  static async logActivity(userId: string, action: string, entity_type: string, entity_id?: string) {
+  static async logActivity(
+    userId: string,
+    action: string,
+    entity_type: string,
+    entity_id?: string,
+    details?: Record<string, unknown>
+  ) {
     const log: ActivityLog = {
       id: crypto.randomUUID(),
       user_id: userId,
       action,
       entity_type,
       entity_id,
+      details,
       created_at: new Date().toISOString(),
     };
 
@@ -1132,6 +1139,16 @@ WHERE salary > dept_avg;`,
     all.unshift(log);
     // keep latest 50
     setLocal('activity_logs', all.slice(0, 50));
+  }
+
+  static async createActivityLog(
+    userId: string,
+    action: string,
+    entity_type: string,
+    entity_id?: string,
+    details?: Record<string, unknown>
+  ) {
+    return this.logActivity(userId, action, entity_type, entity_id, details);
   }
 
   static async getActivityLogs(userId: string): Promise<ActivityLog[]> {

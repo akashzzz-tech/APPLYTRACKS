@@ -1,9 +1,29 @@
+'use client';
+
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import Link from 'next/link';
-import { CheckCircle2, HelpCircle, ShieldCheck } from 'lucide-react';
+import { useState } from 'react';
+import { CheckCircle2, ShieldCheck, Zap } from 'lucide-react';
+import { useAuth } from '@/lib/auth-context';
+import YoupiCheckoutModal from '@/components/youpi-checkout-modal';
 
 export default function PricingPage() {
+  const { user, profile, refreshProfile } = useAuth();
+  const [selectedPlan, setSelectedPlan] = useState<{
+    tier: 'pro' | 'plus';
+    name: string;
+    amount: number;
+  } | null>(null);
+
+  const handlePlanSelect = (tier: 'pro' | 'plus', name: string, amount: number) => {
+    setSelectedPlan({ tier, name, amount });
+  };
+
+  const handlePaymentSuccess = async (tier: 'pro' | 'plus') => {
+    await refreshProfile();
+  };
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -11,6 +31,9 @@ export default function PricingPage() {
       <main className="flex-grow py-16 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-xs font-semibold mb-4">
+              <Zap className="w-3.5 h-3.5 text-blue-600" /> Powered by YouPI-PG 0% Fee Direct UPI
+            </div>
             <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
               Fair & transparent <span className="text-blue-600">student pricing</span>
             </h1>
@@ -60,10 +83,10 @@ export default function PricingPage() {
               </div>
 
               <Link
-                href="/register"
+                href={user ? '/dashboard' : '/register'}
                 className="mt-8 w-full block text-center py-3 px-4 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
               >
-                Start Free Now
+                {user ? 'Current Active Tier' : 'Start Free Now'}
               </Link>
             </div>
 
@@ -108,12 +131,19 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              <Link
-                href="/register"
-                className="mt-8 w-full block text-center py-3 px-4 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md shadow-blue-500/20"
-              >
-                Choose Student Pro
-              </Link>
+              {profile?.subscription_tier === 'pro' ? (
+                <div className="mt-8 py-3 text-center text-sm font-bold text-blue-600 bg-blue-50 rounded-xl border border-blue-200">
+                  Current Active Plan
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handlePlanSelect('pro', 'STUDENT PRO', 49)}
+                  className="mt-8 w-full block text-center py-3 px-4 text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl transition-colors shadow-md shadow-blue-500/20"
+                >
+                  Pay ₹49 with UPI
+                </button>
+              )}
             </div>
 
             {/* Plus */}
@@ -154,23 +184,47 @@ export default function PricingPage() {
                 </div>
               </div>
 
-              <Link
-                href="/register"
-                className="mt-8 w-full block text-center py-3 px-4 text-sm font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-              >
-                Choose Student Plus
-              </Link>
+              {profile?.subscription_tier === 'plus' ? (
+                <div className="mt-8 py-3 text-center text-sm font-bold text-purple-600 bg-purple-50 rounded-xl border border-purple-200">
+                  Current Active Plan
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handlePlanSelect('plus', 'STUDENT PLUS', 99)}
+                  className="mt-8 w-full block text-center py-3 px-4 text-sm font-semibold text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Pay ₹99 with UPI
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Pricing Notice according to Prompt Rule 12 */}
+          {/* Direct UPI Notice */}
           <div className="mt-12 max-w-2xl mx-auto p-4 rounded-xl bg-blue-50 border border-blue-200 text-xs text-blue-900 text-center leading-relaxed">
-            <span className="font-bold">Transparent Billing Notice:</span> ApplyTrack is currently operating in open MVP preview. Free registration grants instant access to core application and deadline tracking. Premium subscription billing is undergoing gateway verification and will be activated seamlessly with zero disruption to your saved data.
+            <span className="font-bold flex items-center justify-center gap-1.5 mb-1 text-sm">
+              <ShieldCheck className="w-4 h-4 text-blue-600" /> Direct UPI Peer-to-Bank Gateway
+            </span>
+            All transactions are routed directly to our verified merchant UPI VPA (<code>81793377025@axl</code>, Payee: <strong>AKASH KALE</strong>) with 0% platform intermediary commission and instantaneous activation upon UTR reference verification.
           </div>
         </div>
       </main>
 
       <Footer />
+
+      {/* YouPI-PG UPI Modal */}
+      {selectedPlan && (
+        <YoupiCheckoutModal
+          isOpen={!!selectedPlan}
+          onClose={() => setSelectedPlan(null)}
+          planTier={selectedPlan.tier}
+          planName={selectedPlan.name}
+          amount={selectedPlan.amount}
+          userId={user?.id}
+          userEmail={user?.email}
+          onSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }

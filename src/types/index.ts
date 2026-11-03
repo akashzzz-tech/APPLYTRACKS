@@ -150,3 +150,16 @@ export interface SupportTicket {
   status: 'open' | 'in_progress' | 'resolved';
   created_at: string;
 }
+
+export interface PaymentTransaction {
+  id: string;
+  user_id: string;
+  plan_tier: 'pro' | 'plus';
+  amount: number;
+  currency: string;
+  upi_id: string;
+  payee_name: string;
+  utr_ref?: string;
+  status: 'pending' | 'verified' | 'failed';
+  created_at: string;
+}
