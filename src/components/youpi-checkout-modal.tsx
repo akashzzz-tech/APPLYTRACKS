@@ -18,7 +18,7 @@ interface YoupiCheckoutModalProps {
 
 export const UPI_CONFIG = {
   vpa: '81793377025@axl',
-  payeeName: 'APPLYTRACK',
+  payeeName: 'applytrack',
   merchantCode: '0000',
 };
 
