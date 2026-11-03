@@ -1,4 +1,4 @@
-import { Application, ApplicationStatus, DeadlineItem, PrepTask, Profile, Resume, ActivityLog, SupportTicket, AdminAnnouncement } from '@/types';
+import { Application, ApplicationStatus, DeadlineItem, PrepTask, Profile, Resume, ActivityLog, SupportTicket, AdminAnnouncement, PracticeNote } from '@/types';
 import { createClient } from './supabase/client';
 
 // Initial curated interview preparation questions with comprehensive Q&A and code snippets
@@ -892,6 +892,161 @@ export class DataService {
     all.push(newTask);
     setLocal('prep_tasks', all);
     return newTask;
+  }
+
+  // --- PRACTICE NOTES & NOTEBOOKS ---
+  static async getPracticeNotes(userId: string): Promise<PracticeNote[]> {
+    const supabase = await this.getSupabase();
+    if (supabase) {
+      const { data } = await supabase
+        .from('practice_notes')
+        .select('*')
+        .eq('user_id', userId)
+        .order('updated_at', { ascending: false });
+      if (data && data.length > 0) return data as PracticeNote[];
+    }
+
+    const all = getLocal<PracticeNote[]>('practice_notes', []);
+    const userNotes = all.filter((n) => n.user_id === userId);
+
+    if (userNotes.length === 0) {
+      const defaultNotes: PracticeNote[] = [
+        {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          title: 'My DSA Revision Cheat Sheet: Two Pointers & Trees',
+          category: 'DSA',
+          tags: ['LeetCode', 'Revision', 'Algorithms', 'Trees'],
+          content: `Key Patterns to Remember:
+1. Sliding Window:
+   - Expand right pointer until window is invalid.
+   - Shrink left pointer until window becomes valid again.
+   - Track max/min window length.
+   
+2. Binary Trees (DFS vs BFS):
+   - Inorder of BST is ALWAYS strictly sorted in ascending order!
+   - Postorder is used for bottom-up computation (e.g. tree diameter or height).
+   - BFS uses a FIFO queue with level_size = len(queue) to process level-by-level.
+
+3. Quick Monotonic Stack Trick:
+   - Next Greater Element: Maintain stack of decreasing elements.
+   - Largest Rectangle in Histogram: Monotonic increasing stack storing indices.`,
+          code_snippet: `# Template: Next Greater Element using Monotonic Stack
+def next_greater_element(nums):
+    res = [-1] * len(nums)
+    stack = []  # stores indices
+    for i, n in enumerate(nums):
+        while stack and nums[stack[-1]] < n:
+            prev_idx = stack.pop()
+            res[prev_idx] = n
+        stack.append(i)
+    return res`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        {
+          id: crypto.randomUUID(),
+          user_id: userId,
+          title: 'PostgreSQL & SQL Placement Query Cheat Sheet',
+          category: 'SQL',
+          tags: ['SQL', 'WindowFunctions', 'Postgres', 'Cheatsheet'],
+          content: `Top SQL Checklist for Technical Rounds:
+- Always use DENSE_RANK() for Nth highest salary (avoids skipping ties).
+- Joins:
+  * INNER JOIN: Matching rows in both tables.
+  * LEFT JOIN: All rows from left table, matching rows or NULL from right.
+  * FULL OUTER JOIN: All rows from both tables, with NULLs where there is no match.
+  * CROSS JOIN: Cartesian product (NxM).
+- Coalesce: COALESCE(salary, 0) replaces NULL values with 0.
+- String Aggregation: STRING_AGG(skill_name, ', ') in PostgreSQL or GROUP_CONCAT in MySQL.`,
+          code_snippet: `-- CTE + Window Function Practice Query
+WITH DeptSummary AS (
+    SELECT 
+        dept_id,
+        emp_name,
+        salary,
+        AVG(salary) OVER (PARTITION BY dept_id) AS dept_avg
+    FROM employees
+)
+SELECT emp_name, dept_id, salary, dept_avg
+FROM DeptSummary
+WHERE salary > dept_avg;`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+      ];
+      setLocal('practice_notes', [...all, ...defaultNotes]);
+      return defaultNotes;
+    }
+
+    return userNotes.sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+  }
+
+  static async createPracticeNote(userId: string, note: Partial<PracticeNote>): Promise<PracticeNote> {
+    const newNote: PracticeNote = {
+      id: crypto.randomUUID(),
+      user_id: userId,
+      title: note.title || 'Untitled Practice Note',
+      category: note.category || 'General',
+      tags: note.tags || [],
+      content: note.content || '',
+      code_snippet: note.code_snippet || '',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    const supabase = await this.getSupabase();
+    if (supabase) {
+      const { data } = await supabase.from('practice_notes').insert(newNote).select().single();
+      if (data) return data as PracticeNote;
+    }
+
+    const all = getLocal<PracticeNote[]>('practice_notes', []);
+    all.unshift(newNote);
+    setLocal('practice_notes', all);
+    return newNote;
+  }
+
+  static async updatePracticeNote(userId: string, id: string, updates: Partial<PracticeNote>): Promise<PracticeNote | null> {
+    const supabase = await this.getSupabase();
+    if (supabase) {
+      const { data } = await supabase
+        .from('practice_notes')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', userId)
+        .select()
+        .single();
+      if (data) return data as PracticeNote;
+    }
+
+    const all = getLocal<PracticeNote[]>('practice_notes', []);
+    const idx = all.findIndex((n) => n.id === id && n.user_id === userId);
+    if (idx !== -1) {
+      all[idx] = {
+        ...all[idx],
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+      setLocal('practice_notes', all);
+      return all[idx];
+    }
+    return null;
+  }
+
+  static async deletePracticeNote(userId: string, id: string): Promise<boolean> {
+    const supabase = await this.getSupabase();
+    if (supabase) {
+      await supabase.from('practice_notes').delete().eq('id', id).eq('user_id', userId);
+      return true;
+    }
+
+    const all = getLocal<PracticeNote[]>('practice_notes', []);
+    setLocal(
+      'practice_notes',
+      all.filter((n) => !(n.id === id && n.user_id === userId))
+    );
+    return true;
   }
 
   // --- USER PROFILE & ELIGIBILITY ---

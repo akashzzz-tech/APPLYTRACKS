@@ -179,6 +179,41 @@ CREATE POLICY "Users can delete own preparation tasks"
 
 CREATE INDEX IF NOT EXISTS prep_tasks_user_id_idx ON public.preparation_tasks (user_id, category);
 
+-- 7. PRACTICE NOTES
+CREATE TABLE IF NOT EXISTS public.practice_notes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  category TEXT NOT NULL,
+  tags TEXT[] DEFAULT '{}',
+  content TEXT NOT NULL,
+  code_snippet TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
+);
+
+ALTER TABLE public.practice_notes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can view own practice notes"
+  ON public.practice_notes FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own practice notes"
+  ON public.practice_notes FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own practice notes"
+  ON public.practice_notes FOR UPDATE
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own practice notes"
+  ON public.practice_notes FOR DELETE
+  USING (auth.uid() = user_id);
+
+CREATE INDEX IF NOT EXISTS practice_notes_user_id_idx ON public.practice_notes (user_id);
+CREATE INDEX IF NOT EXISTS practice_notes_category_idx ON public.practice_notes (user_id, category);
+CREATE INDEX IF NOT EXISTS practice_notes_updated_at_idx ON public.practice_notes (user_id, updated_at);
+
 -- 6. ACTIVITY LOGS
 CREATE TABLE IF NOT EXISTS public.activity_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

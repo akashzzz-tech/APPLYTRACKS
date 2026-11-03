@@ -92,6 +92,36 @@ export interface PrepTask {
   created_at: string;
 }
 
+export interface PracticeNote {
+  id: string;
+  user_id: string;
+  title: string;
+  category: string;
+  tags: string[];
+  content: string;
+  code_snippet?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CourseNoteSection {
+  heading: string;
+  content: string;
+  code?: string;
+  key_points?: string[];
+}
+
+export interface CourseNote {
+  id: string;
+  category: 'Python' | 'SQL' | 'DSA' | 'System Design' | 'Machine Learning' | 'HR & Soft Skills' | 'Aptitude';
+  title: string;
+  tagline: string;
+  estimated_read_time: string;
+  difficulty: 'Beginner' | 'Intermediate' | 'Advanced';
+  summary: string;
+  sections: CourseNoteSection[];
+}
+
 export interface ActivityLog {
   id: string;
   user_id: string;
